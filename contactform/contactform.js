@@ -1,118 +1,96 @@
-jQuery(document).ready(function($) {
-  "use strict";
 
-  //Contact
-  $('form.contactForm').submit(() => {
-    var f = $(this).find('.form-group'),
-      ferror = false,
-      emailExp = /^[^\s()<>@,;:\/]+@\w[\w\.-]+\.[a-z]{2,}$/i;
+document.addEventListener('DOMContentLoaded', function () {
+  var contactForm = document.querySelector('form.contactForm');
+  contactForm.addEventListener('submit', function (event) {
+    event.preventDefault(); // Prevent the default form submission
 
-    f.children('input').each(() => { // run all inputs
+    var ferror = false;
+    var emailExp = /^[^\s()<>@,;:\/]+@\w[\w\.-]+\.[a-z]{2,}$/i;
 
-      var i = $(this); // current input
-      var rule = i.attr('data-rule');
+    // Get all form elements
+    var formElements = contactForm.elements;
 
-      if (rule !== undefined) {
+    for (var i = 0; i < formElements.length; i++) {
+      var input = formElements[i];
+      var rule = input.getAttribute('data-rule');
+
+      if (rule !== null && rule !== undefined) {
         var ierror = false; // error flag for current input
-        var pos = rule.indexOf(':', 0);
-        if (pos >= 0) {
-          var exp = rule.substr(pos + 1, rule.length);
-          rule = rule.substr(0, pos);
-        } else {
-          rule = rule.substr(pos + 1, rule.length);
-        }
+        var pos = rule.indexOf(':');
+        var exp = pos >= 0 ? rule.substr(pos + 1) : '';
+
+        rule = pos >= 0 ? rule.substr(0, pos) : rule;
 
         switch (rule) {
           case 'required':
-            if (i.val() === '') {
+            if (input.value.trim() === '') {
               ferror = ierror = true;
             }
             break;
 
           case 'minlen':
-            if (i.val().length < parseInt(exp)) {
+            if (input.value.length < parseInt(exp)) {
               ferror = ierror = true;
             }
             break;
 
           case 'email':
-            if (!emailExp.test(i.val())) {
+            if (!emailExp.test(input.value)) {
               ferror = ierror = true;
             }
             break;
 
           case 'checked':
-            if (! i.is(':checked')) {
+            if (!input.checked) {
               ferror = ierror = true;
             }
             break;
 
           case 'regexp':
             exp = new RegExp(exp);
-            if (!exp.test(i.val())) {
+            if (!exp.test(input.value)) {
               ferror = ierror = true;
             }
             break;
         }
-        i.next('.validation').html((ierror ? (i.attr('data-msg') !== undefined ? i.attr('data-msg') : 'wrong Input') : '')).show('blind');
+
+        var validationMessage = ierror ? (input.getAttribute('data-msg') || 'Wrong Input') : '';
+        var validationElement = input.nextElementSibling;
+        validationElement.textContent = validationMessage;
+        validationElement.style.display = ierror ? 'block' : 'none';
       }
-    });
-    f.children('textarea').each(() => { // run all inputs
-
-      var i = $(this); // current input
-      var rule = i.attr('data-rule');
-
-      if (rule !== undefined) {
-        var ierror = false; // error flag for current input
-        var pos = rule.indexOf(':', 0);
-        if (pos >= 0) {
-          var exp = rule.substr(pos + 1, rule.length);
-          rule = rule.substr(0, pos);
-        } else {
-          rule = rule.substr(pos + 1, rule.length);
-        }
-
-        switch (rule) {
-          case 'required':
-            if (i.val() === '') {
-              ferror = ierror = true;
-            }
-            break;
-
-          case 'minlen':
-            if (i.val().length < parseInt(exp)) {
-              ferror = ierror = true;
-            }
-            break;
-        }
-        i.next('.validation').html((ierror ? (i.attr('data-msg') != undefined ? i.attr('data-msg') : 'wrong Input') : '')).show('blind');
-      }
-    });
-    if (ferror) return false;
-    else var str = $(this).serialize();
-    var action = $(this).attr('action');
-    if( ! action ) {
-      action = 'contactform/contactform.php';
     }
-    $.ajax({
-      type: "POST",
-      url: action,
-      data: str,
-      success: function(msg) {
-        // alert(msg);
-        if (msg == 'OK') {
-          $("#sendmessage").addClass("show");
-          $("#errormessage").removeClass("show");
-          $('.contactForm').find("input, textarea").val("");
-        } else {
-          $("#sendmessage").removeClass("show");
-          $("#errormessage").addClass("show");
-          $('#errormessage').html(msg);
+
+    if (ferror) return false;
+    else {
+      var formData = new FormData(contactForm);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/contact', true); // Replace with your backend URL
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            var response = xhr.responseText;
+            if (response === 'OK') {
+              document.getElementById('sendmessage').classList.add('show');
+              document.getElementById('errormessage').classList.remove('show');
+              contactForm.reset();
+            } else {
+              document.getElementById('sendmessage').classList.remove('show');
+              document.getElementById('errormessage').classList.add('show');
+              document.getElementById('errormessage').textContent = response;
+            }
+          } else {
+            console.error('Error:', xhr.status);
+          }
         }
+      };
 
-      }
-    });
-    return false;
+      xhr.send(formData);
+
+      return false;
+    }
   });
-
 });
