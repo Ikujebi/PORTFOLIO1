@@ -1,5 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const { connectToMongoDB } = require('./mongo-config'); // Adjust the path as needed
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -10,18 +12,29 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 // Handle form submissions
-app.post('/contact', (req, res) => {
-  // Access form data from the request body
+app.post('/contact', async (req, res) => {
   const name = req.body.name;
   const email = req.body.email;
   const subject = req.body.subject;
   const message = req.body.message;
 
-  // You can now process, store, or send this data as needed
-  // For example, you could send an email, save it to a database, etc.
+  try {
+    const db = await connectToMongoDB();
+    const collection = db.collection('form_submissions');
 
-  // Send a response to the client (your portfolio)
-  res.send('Message received successfully!');
+    // Insert the form data into the collection
+    await collection.insertOne({
+      name,
+      email,
+      subject,
+      message,
+    });
+
+    res.send('Message received successfully!');
+  } catch (err) {
+    console.error('Error handling form submission:', err);
+    res.status(500).send('Internal server error');
+  }
 });
 
 app.listen(port, () => {
